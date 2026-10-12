@@ -21,6 +21,30 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - name: Enable GitHub Pages (auto)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$(curl -sS -o /tmp/pages.json -w "%{http_code}" \
+            -X POST "https://api.github.com/repos/${{ github.repository }}/pages" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            -d '{"build_type":"workflow"}')
+          echo "POST /pages -> HTTP $code"
+          if [ "$code" = "409" ]; then
+            code=$(curl -sS -o /tmp/pages.json -w "%{http_code}" \
+              -X PUT "https://api.github.com/repos/${{ github.repository }}/pages" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2026-03-10" \
+              -d '{"build_type":"workflow"}')
+            echo "PUT /pages -> HTTP $code"
+          fi
+          if [ "$code" != "201" ] && [ "$code" != "204" ]; then
+            echo "--- response ---"
+            cat /tmp/pages.json
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
